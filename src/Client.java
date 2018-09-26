@@ -49,17 +49,17 @@ public class Client extends JFrame {
 			Thread th = new Thread(() -> {
 				while(co) {
 					System.out.println("test authentification");
-					/*String innf;
+					String innf;
 					try {
 						innf = in.readUTF();
-						g.nouvM(innf);
+						//g.nouvM(innf);
 					}
 					catch(EOFException e) {
 						//System.out.println("no m");
 					}
 					catch (IOException e) {
 						e.printStackTrace();
-					}*/
+					}
 					this.disconnect();
 				}
 				try {
@@ -97,6 +97,7 @@ public class Client extends JFrame {
 		try {
 			out.writeUTF("/quit");
 			co=false;
+			System.out.println("disconnection");
 		}
 		catch(IOException e) {
 			e.printStackTrace();

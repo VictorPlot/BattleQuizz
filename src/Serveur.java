@@ -54,7 +54,9 @@ public class Serveur {
 			out.writeUTF("Connected");
 			
 			while(!ref.isDeco()) {
+				System.out.println("hm");
 				m=in.readUTF();
+				System.out.println("hmm");
 				if(m.equals("/quit")) {
 					send(ref.getUserName()+" has left the server.");
 					ref.setDeco(true);
