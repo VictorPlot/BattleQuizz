@@ -3,11 +3,6 @@ public class Serveur {
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		
-		// TEST
-		// ah
-		// troisieme essai
-
+		System.out.println("cheh");
 	}
-
 }
