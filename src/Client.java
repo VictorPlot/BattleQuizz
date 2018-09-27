@@ -1,7 +1,10 @@
 import java.io.*;
 import java.net.*;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 import javax.swing.JFrame;
+import javax.xml.bind.DatatypeConverter;
 
 public class Client extends JFrame {
 	/**
@@ -23,7 +26,17 @@ public class Client extends JFrame {
 		//setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		//pack();
 		//setVisible(true);
-		this.connect(SERVER_NAME,PORT,"lol");
+		String pass = "password";
+		MessageDigest md;
+		try {
+			md = MessageDigest.getInstance("MD5");
+			md.update(pass.getBytes());
+		    byte[] digest = md.digest();
+		    String myHash = DatatypeConverter.printHexBinary(digest).toLowerCase();
+			this.connect(SERVER_NAME,PORT,"/signin;user;"+myHash);
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public static void main(String[] args) {
@@ -52,6 +65,7 @@ public class Client extends JFrame {
 					String innf;
 					try {
 						innf = in.readUTF();
+						System.out.println(innf);
 						//g.nouvM(innf);
 					}
 					catch(EOFException e) {
