@@ -48,9 +48,9 @@ public class Serveur {
 			//reception
 			String m = in.readUTF();
 			System.out.println("New client connected : "+m);
-			
 			RefClient ref = new RefClient(in,out,m);
 			clients.add(ref);
+			int idListe=clients.indexOf(ref);
 			nbConnection++;
 			
 			String[] sComm;			
@@ -62,14 +62,15 @@ public class Serveur {
 					Commandes comm = Commandes.valueOf(sComm[0]);
 					switch(comm) {
 						case joinPartie:
-							recherchePartie(clients.indexOf(ref),Theme.valueOf(sComm[1]));
+							recherchePartie(idListe,Theme.valueOf(sComm[1]));
 						case disconnect:
 							ref.setDeco(true);
-							System.out.println(ref.getUserName()+" : Deconnexion");
+							System.out.println(clients.get(idListe).getUserName()+" : Deconnexion");
 						case answer:
-							System.out.println(ref.getUserName()+" : a repondu");
+							clients.get(idListe).getPartieThread().notify();
+							System.out.println(clients.get(idListe).getUserName()+" : a repondu");
 						default:
-							System.out.println(ref.getUserName()+" : Commmande de serveur");
+							System.out.println(clients.get(idListe).getUserName()+" : Commmande de serveur");
 					}
 				} catch(EOFException e) {
 				} catch (IOException e) {
@@ -101,6 +102,9 @@ public class Serveur {
 						gestionPartie(idPartie);
 					});
 					th.start();
+					for(int j=0;j<parties.get(i).joueurs.size();j++) {
+						clients.get(parties.get(i).joueurs.get(j)).setPartieThread(th);
+					}
 				}
 			}
 			i++;
@@ -113,25 +117,74 @@ public class Serveur {
 	}
 	
 	void gestionPartie(int idPartie) {
+		int idJoueurIter;
+		int idJoueurAns;
 		//requete questions
 		
-		//get ready decompte
+		try {
+			for(int n=0;n<parties.get(idPartie).joueurs.size();n++) {
+				idJoueurIter=parties.get(idPartie).joueurs.get(n);
+				clients.get(idJoueurIter).getOut().writeUTF(Commandes.getReady.toString());
+			}
+			System.out.println("attente de 10s");
+			Thread.sleep(10000);
+			int i=0;
+			boolean enAtt;
+			while(i<10) {
+				for(int n=0;n<parties.get(idPartie).joueurs.size();n++) {
+					idJoueurIter=parties.get(idPartie).joueurs.get(n);
+					System.out.println(clients.get(idJoueurIter).getUserName()+" question posee");
+					clients.get(idJoueurIter).getOut().writeUTF(Commandes.question.toString());
+				}
+				enAtt=true;
+				while(enAtt) {
+					this.wait();
+					int k=0;
+					while(k<parties.get(idPartie).joueurs.size() && (clients.get(parties.get(idPartie).joueurs.get(k)).getAnswer().isEmpty() || clients.get(parties.get(idPartie).joueurs.get(k)).isHasAnswered())) {
+						k++;
+					}
+					idJoueurAns=parties.get(idPartie).joueurs.get(k);
+					if(clients.get(idJoueurAns).getAnswer().equals("correct")) {
+						clients.get(idJoueurAns).right();
+						clients.get(idJoueurAns).getOut().writeUTF(Commandes.right.toString());
+						enAtt=false;
+						System.out.println(clients.get(idJoueurAns).getUserName()+" bonne reponse");
+						for(int n=0;n<parties.get(idPartie).joueurs.size();n++) {
+							idJoueurIter=parties.get(idPartie).joueurs.get(n);
+							if(!clients.get(idJoueurIter).getUserName().equals(clients.get(idJoueurAns).getUserName())) {
+								clients.get(idJoueurIter).getOut().writeUTF(Commandes.otherRight.toString());
+							}
+						}
+					}
+					else {
+						clients.get(idJoueurAns).getOut().writeUTF(Commandes.wrong.toString());
+						System.out.println(clients.get(idJoueurAns).getUserName()+" mauvaise reponse");
+						clients.get(idJoueurAns).setHasAnswered(true);
+						enAtt=false;
+						for(int n=0;n<parties.get(idPartie).joueurs.size();n++) {
+							idJoueurIter=parties.get(idPartie).joueurs.get(n);
+							if(!clients.get(idJoueurIter).isHasAnswered()) {
+								enAtt=true;
+							}
+						}
+						if(!enAtt) {
+							for(int n=0;n<parties.get(idPartie).joueurs.size();n++) {
+								idJoueurIter=parties.get(idPartie).joueurs.get(n);
+								clients.get(idJoueurIter).getOut().writeUTF(Commandes.allWrong.toString());
+							}
+						}
+					}
+				}
+			}
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		
 		//question (while)
 		//envoi Commandes.question
 		//attente Commandes.answer ou fin temps
 		//prise en compte de Commandes.disconnect
-	}
-	
-	private void send(String m) {
-		for(int i=0;i<clients.size();i++) {
-			try {
-				System.out.println(clients.get(i).getOut());
-				clients.get(i).getOut().writeUTF(m);
-			}
-			catch(IOException e) {
-				e.printStackTrace();
-			}
-		}
 	}
 }
