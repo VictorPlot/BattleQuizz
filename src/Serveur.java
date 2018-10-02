@@ -5,11 +5,14 @@ import java.util.ArrayList;
 public class Serveur {	
 	private final static int PORT = 10000;
 	private final static int MAX_CONNECTION = 10;
+	private final static int MAX_JOUEUR = 3;
 	private int nbConnection=0;
 	private ArrayList<RefClient> clients;
+	private ArrayList<Partie> parties;
 	
 	Serveur() {
 		clients = new ArrayList<RefClient>();
+		parties = new ArrayList<Partie>();
 		System.out.println("Server launch");
 		try {
 			//gestion socket et des connections clients
@@ -23,7 +26,7 @@ public class Serveur {
 				});
 				th.start();
 			}
-			System.out.println("max number of connection reached");
+			System.out.println("max number of connections reached");
 			
 			sSock.close();
 		}
@@ -50,23 +53,33 @@ public class Serveur {
 			clients.add(ref);
 			nbConnection++;
 			
-			//envoi
-			out.writeUTF("Connected");
+			String[] sComm;			
 			
 			while(!ref.isDeco()) {
-				System.out.println("hm");
-				m=in.readUTF();
-				System.out.println("hmm");
-				if(m.equals("/quit")) {
-					send(ref.getUserName()+" has left the server.");
-					ref.setDeco(true);
-				}
-				else if(!m.isEmpty()) {
-					send(ref.getUserName()+" : "+m);
+				try {
+					m = in.readUTF();
+					sComm = m.split(";");
+					Commandes comm = Commandes.valueOf(sComm[0]);
+					switch(comm) {
+						case joinPartie:
+							recherchePartie(clients.indexOf(ref),Theme.valueOf(sComm[1]));
+						case disconnect:
+							ref.setDeco(true);
+							System.out.println(ref.getUserName()+" : Deconnexion");
+						case answer:
+							System.out.println(ref.getUserName()+" : a repondu");
+						default:
+							System.out.println(ref.getUserName()+" : Commmande de serveur");
+					}
+				} catch(EOFException e) {
+				} catch (IOException e) {
+					e.printStackTrace();
+				} catch(IllegalArgumentException e) {
+					System.out.println(ref.getUserName()+" : Commande non reconnue");
+					e.printStackTrace();
 				}
 			}
-			System.out.println("adieu"+nbConnection);
-			out.writeUTF("Disconnected");
+			//out.writeUTF(Commandes.disconnect.toString());
 			out.close();
 			in.close();
 			clients.remove(ref);
@@ -76,6 +89,39 @@ public class Serveur {
 			e.printStackTrace();
 		} 
 		//
+	}
+	
+	void recherchePartie(int idClient,Theme t) {
+		int i=0;
+		while(i<parties.size()) {
+			if(!parties.get(i).isEnCours() && parties.get(i).getTheme().equals(t)) {
+				parties.get(i).nouvJoueur(idClient);
+				if(parties.get(i).getNbJoueurs()==MAX_JOUEUR) {
+					int idPartie=i;
+					Thread th = new Thread(() -> {
+						gestionPartie(idPartie);
+					});
+					th.start();
+				}
+			}
+			i++;
+		}
+		if(i>=parties.size()) {
+			Partie p = new Partie(t);
+			p.nouvJoueur(idClient);
+			parties.add(p);
+		}
+	}
+	
+	void gestionPartie(int idPartie) {
+		//requete questions
+		
+		//get ready decompte
+		
+		//question (while)
+		//envoi Commandes.question
+		//attente Commandes.answer ou fin temps
+		//prise en compte de Commandes.disconnect
 	}
 	
 	private void send(String m) {

@@ -49,15 +49,30 @@ public class Client extends JFrame {
 			Thread th = new Thread(() -> {
 				while(co) {
 					System.out.println("test authentification");
-					String innf;
+					String sComm;
 					try {
-						innf = in.readUTF();
+						sComm = in.readUTF();
+						Commandes comm = Commandes.valueOf(sComm);
+						switch(comm) {
+							case joinPartie:
+								//popup
+								System.out.println("Recherche de partie");
+							case connect:
+								System.out.println("Connecte");
+							case disconnect:
+								disconnect();
+								System.out.println("Deconnexion");
+							case question:
+								System.out.println("Reception de la question");
+							case answer:
+								System.out.println("Quelqu un a repondu");
+						}
 						//g.nouvM(innf);
-					}
-					catch(EOFException e) {
+					} catch(EOFException e) {
 						//System.out.println("no m");
-					}
-					catch (IOException e) {
+					} catch (IOException e) {
+						e.printStackTrace();
+					} catch(IllegalArgumentException e) {
 						e.printStackTrace();
 					}
 					this.disconnect();
@@ -95,9 +110,8 @@ public class Client extends JFrame {
 	
 	public void disconnect() {
 		try {
-			out.writeUTF("/quit");
+			out.writeUTF(Commandes.disconnect.toString());
 			co=false;
-			System.out.println("disconnection");
 		}
 		catch(IOException e) {
 			e.printStackTrace();
