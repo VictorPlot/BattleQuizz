@@ -74,7 +74,8 @@ public class Serveur {
 		}
 		catch(IOException e) {
 			e.printStackTrace();
-		}
+		} 
+		//
 	}
 	
 	private void send(String m) {
