@@ -5,9 +5,12 @@ public class Partie {
 	private int nbJoueurs;
 	private boolean enCours;
 	ArrayList<Integer> joueurs;
+	public Object lock;
 	
 	Partie(Theme t) {
 		theme = t;
+		joueurs = new ArrayList<Integer>();
+		lock = new Object();
 	}
 
 	public Theme getTheme() {

@@ -51,6 +51,7 @@ public class Serveur {
 			RefClient ref = new RefClient(in,out,m);
 			clients.add(ref);
 			int idListe=clients.indexOf(ref);
+			System.out.println(idListe);
 			nbConnection++;
 			
 			String[] sComm;			
@@ -63,12 +64,17 @@ public class Serveur {
 					switch(comm) {
 						case joinPartie:
 							recherchePartie(idListe,Theme.valueOf(sComm[1]));
+							break;
 						case disconnect:
 							ref.setDeco(true);
 							System.out.println(clients.get(idListe).getUserName()+" : Deconnexion");
+							break;
 						case answer:
-							clients.get(idListe).getPartieThread().notify();
-							System.out.println(clients.get(idListe).getUserName()+" : a repondu");
+							synchronized(parties.get(clients.get(idListe).getIdPartieRej()).lock) {
+								parties.get(clients.get(idListe).getIdPartieRej()).lock.notify();
+								System.out.println(clients.get(idListe).getUserName()+" : a repondu");
+							}
+							break;
 						default:
 							System.out.println(clients.get(idListe).getUserName()+" : Commmande de serveur");
 					}
@@ -96,15 +102,13 @@ public class Serveur {
 		while(i<parties.size()) {
 			if(!parties.get(i).isEnCours() && parties.get(i).getTheme().equals(t)) {
 				parties.get(i).nouvJoueur(idClient);
+				clients.get(idClient).setIdPartieRej(i);
 				if(parties.get(i).getNbJoueurs()==MAX_JOUEUR) {
 					int idPartie=i;
 					Thread th = new Thread(() -> {
 						gestionPartie(idPartie);
 					});
 					th.start();
-					for(int j=0;j<parties.get(i).joueurs.size();j++) {
-						clients.get(parties.get(i).joueurs.get(j)).setPartieThread(th);
-					}
 				}
 			}
 			i++;
@@ -129,48 +133,71 @@ public class Serveur {
 			System.out.println("attente de 10s");
 			Thread.sleep(10000);
 			int i=0;
-			boolean enAtt;
+			boolean enAtt = false;
 			while(i<10) {
 				for(int n=0;n<parties.get(idPartie).joueurs.size();n++) {
 					idJoueurIter=parties.get(idPartie).joueurs.get(n);
 					System.out.println(clients.get(idJoueurIter).getUserName()+" question posee");
 					clients.get(idJoueurIter).getOut().writeUTF(Commandes.question.toString());
 				}
+				new java.util.Timer().schedule(
+					    new java.util.TimerTask() {
+					        @Override
+					        public void run() {
+					        	for(int n=0;n<parties.get(idPartie).joueurs.size();n++) {
+									int idJoueurIter=parties.get(idPartie).joueurs.get(n);
+									clients.get(idJoueurIter).setHasAnswered(true);
+								}
+					        	synchronized(parties.get(idPartie).lock) {
+					        		parties.get(idPartie).lock.notify();
+					        	}
+					        }
+					    }, 
+					    10000 
+				);
 				enAtt=true;
 				while(enAtt) {
-					this.wait();
-					int k=0;
-					while(k<parties.get(idPartie).joueurs.size() && (clients.get(parties.get(idPartie).joueurs.get(k)).getAnswer().isEmpty() || clients.get(parties.get(idPartie).joueurs.get(k)).isHasAnswered())) {
-						k++;
-					}
-					idJoueurAns=parties.get(idPartie).joueurs.get(k);
-					if(clients.get(idJoueurAns).getAnswer().equals("correct")) {
-						clients.get(idJoueurAns).right();
-						clients.get(idJoueurAns).getOut().writeUTF(Commandes.right.toString());
-						enAtt=false;
-						System.out.println(clients.get(idJoueurAns).getUserName()+" bonne reponse");
-						for(int n=0;n<parties.get(idPartie).joueurs.size();n++) {
-							idJoueurIter=parties.get(idPartie).joueurs.get(n);
-							if(!clients.get(idJoueurIter).getUserName().equals(clients.get(idJoueurAns).getUserName())) {
-								clients.get(idJoueurIter).getOut().writeUTF(Commandes.otherRight.toString());
-							}
+					synchronized (parties.get(idPartie).lock) {
+						parties.get(idPartie).lock.wait();
+						int k = 0;
+						while (k < parties.get(idPartie).joueurs.size()
+								&& (clients.get(parties.get(idPartie).joueurs.get(k)).getAnswer().isEmpty()
+										|| clients.get(parties.get(idPartie).joueurs.get(k)).isHasAnswered())) {
+							k++;
 						}
-					}
-					else {
-						clients.get(idJoueurAns).getOut().writeUTF(Commandes.wrong.toString());
-						System.out.println(clients.get(idJoueurAns).getUserName()+" mauvaise reponse");
-						clients.get(idJoueurAns).setHasAnswered(true);
-						enAtt=false;
-						for(int n=0;n<parties.get(idPartie).joueurs.size();n++) {
-							idJoueurIter=parties.get(idPartie).joueurs.get(n);
-							if(!clients.get(idJoueurIter).isHasAnswered()) {
-								enAtt=true;
+						idJoueurAns = parties.get(idPartie).joueurs.get(k);
+						if (clients.get(idJoueurAns).getAnswer().equals("correct")) {
+							clients.get(idJoueurAns).right();
+							clients.get(idJoueurAns).getOut().writeUTF(Commandes.right.toString());
+							enAtt = false;
+							System.out.println(clients.get(idJoueurAns).getUserName() + " bonne reponse");
+							for (int n = 0; n < parties.get(idPartie).joueurs.size(); n++) {
+								idJoueurIter = parties.get(idPartie).joueurs.get(n);
+								if (!clients.get(idJoueurIter).getUserName()
+										.equals(clients.get(idJoueurAns).getUserName())) {
+									clients.get(idJoueurIter).getOut().writeUTF(Commandes.otherRight.toString());
+									clients.get(idJoueurIter).setHasAnswered(false);
+								}
 							}
-						}
-						if(!enAtt) {
-							for(int n=0;n<parties.get(idPartie).joueurs.size();n++) {
-								idJoueurIter=parties.get(idPartie).joueurs.get(n);
-								clients.get(idJoueurIter).getOut().writeUTF(Commandes.allWrong.toString());
+						} else {
+							if (!clients.get(idJoueurAns).isHasAnswered()) {
+								clients.get(idJoueurAns).getOut().writeUTF(Commandes.wrong.toString());
+								System.out.println(clients.get(idJoueurAns).getUserName() + " mauvaise reponse");
+								clients.get(idJoueurAns).setHasAnswered(true);
+							}
+							enAtt = false;
+							for (int n = 0; n < parties.get(idPartie).joueurs.size(); n++) {
+								idJoueurIter = parties.get(idPartie).joueurs.get(n);
+								if (!clients.get(idJoueurIter).isHasAnswered()) {
+									enAtt = true;
+								}
+							}
+							if (!enAtt) {
+								for (int n = 0; n < parties.get(idPartie).joueurs.size(); n++) {
+									idJoueurIter = parties.get(idPartie).joueurs.get(n);
+									clients.get(idJoueurIter).getOut().writeUTF(Commandes.allWrong.toString());
+									clients.get(idJoueurIter).setHasAnswered(false);
+								}
 							}
 						}
 					}
@@ -181,10 +208,6 @@ public class Serveur {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
-		//question (while)
-		//envoi Commandes.question
-		//attente Commandes.answer ou fin temps
-		//prise en compte de Commandes.disconnect
+
 	}
 }

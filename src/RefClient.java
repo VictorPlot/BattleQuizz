@@ -6,7 +6,7 @@ public class RefClient {
 	private DataOutputStream out;
 	private String userName;
 	private boolean deco;
-	private Thread partieThread;
+	private int  idPartieRej;
 	private String answer;
 	private boolean hasAnswered;
 	private int score;
@@ -37,12 +37,12 @@ public class RefClient {
 		this.deco = deco;
 	}
 	
-	public void setPartieThread(Thread th) {
-		this.partieThread = th;
+	public void setIdPartieRej(int i) {
+		this.idPartieRej = i;
 	}
 	
-	public Thread getPartieThread() {
-		return partieThread;
+	public int getIdPartieRej() {
+		return idPartieRej;
 	}
 	
 	public void setAnswer(String s) {

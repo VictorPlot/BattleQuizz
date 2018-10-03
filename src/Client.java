@@ -43,6 +43,7 @@ public class Client extends JFrame {
 			//envoi
 			out.writeUTF(name);
 			
+			out.writeUTF(Commandes.joinPartie.toString()+";MUSIQUE");
 			//System.out.println(inf);
 			co=true;
 			
@@ -57,15 +58,20 @@ public class Client extends JFrame {
 							case joinPartie:
 								//popup
 								System.out.println("Recherche de partie");
+								break;
 							case connect:
 								System.out.println("Connecte");
+								break;
 							case disconnect:
 								disconnect();
 								System.out.println("Deconnexion");
+								break;
 							case question:
 								System.out.println("Reception de la question");
+								break;
 							case answer:
 								System.out.println("Quelqu un a repondu");
+								break;
 						}
 						//g.nouvM(innf);
 					} catch(EOFException e) {
