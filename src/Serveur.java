@@ -138,7 +138,7 @@ public class Serveur {
 				for(int n=0;n<parties.get(idPartie).joueurs.size();n++) {
 					idJoueurIter=parties.get(idPartie).joueurs.get(n);
 					System.out.println(clients.get(idJoueurIter).getUserName()+" question posee");
-					clients.get(idJoueurIter).getOut().writeUTF(Commandes.question.toString());
+					clients.get(idJoueurIter).getOut().writeUTF(Commandes.question.toString() + ";");
 				}
 				new java.util.Timer().schedule(
 					    new java.util.TimerTask() {
@@ -175,13 +175,13 @@ public class Serveur {
 								idJoueurIter = parties.get(idPartie).joueurs.get(n);
 								if (!clients.get(idJoueurIter).getUserName()
 										.equals(clients.get(idJoueurAns).getUserName())) {
-									clients.get(idJoueurIter).getOut().writeUTF(Commandes.otherRight.toString());
+									clients.get(idJoueurIter).getOut().writeUTF(Commandes.otherRight.toString()+";");
 									clients.get(idJoueurIter).setHasAnswered(false);
 								}
 							}
 						} else {
 							if (!clients.get(idJoueurAns).isHasAnswered()) {
-								clients.get(idJoueurAns).getOut().writeUTF(Commandes.wrong.toString());
+								clients.get(idJoueurAns).getOut().writeUTF(Commandes.wrong.toString() +";");
 								System.out.println(clients.get(idJoueurAns).getUserName() + " mauvaise reponse");
 								clients.get(idJoueurAns).setHasAnswered(true);
 							}
@@ -195,13 +195,14 @@ public class Serveur {
 							if (!enAtt) {
 								for (int n = 0; n < parties.get(idPartie).joueurs.size(); n++) {
 									idJoueurIter = parties.get(idPartie).joueurs.get(n);
-									clients.get(idJoueurIter).getOut().writeUTF(Commandes.allWrong.toString());
+									clients.get(idJoueurIter).getOut().writeUTF(Commandes.allWrong.toString()+";");
 									clients.get(idJoueurIter).setHasAnswered(false);
 								}
 							}
 						}
 					}
 				}
+				i++;
 			}
 		} catch (InterruptedException e) {
 			e.printStackTrace();
