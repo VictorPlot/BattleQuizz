@@ -92,24 +92,45 @@ public class Serveur {
 					e.printStackTrace();
 				}
 			}
-			//out.writeUTF(Commandes.disconnect.toString());
+			
 			out.close();
 			in.close();
+			//recupere la position dans joueurs de la position dans client du joueur
+			int iii=parties.get(clients.get(idListe).getIdPartieRej()).joueurs.indexOf(idListe);
+			//supprime le joueur de joueurs
+			parties.get(clients.get(idListe).getIdPartieRej()).depJoueur(iii);
+			//supprime le joueur de clients
 			clients.remove(ref);
+			actualisationIndices(idListe);
 			nbConnection--;
 		}
 		catch(IOException e) {
 			e.printStackTrace();
 		}
 	}
-
-	void recherchePartie(int idClient,Theme t) {
+	
+	private void actualisationIndices(int idClients) {
+		int idPartie;
+		int idJoueur;
+		for(int i=0;i<clients.size();i++) {
+			if(i>=idClients) {
+				idPartie = clients.get(i).getIdPartieRej();
+				idJoueur = parties.get(idPartie).joueurs.indexOf(i);
+				if(idJoueur>0) {
+					parties.get(idPartie).modJoueur(idJoueur);
+				}					
+			}
+		}
+	}
+	
+	private void recherchePartie(int idClient,Theme t) {
 		int i=0;
 		while(i<parties.size()) {
 			if(!parties.get(i).isEnCours() && parties.get(i).getTheme().equals(t)) {
 				parties.get(i).nouvJoueur(idClient);
 				clients.get(idClient).setIdPartieRej(i);
 				if(parties.get(i).getNbJoueurs()==MAX_JOUEUR) {
+					parties.get(i).setEnCours(true);
 					int idPartie=i;
 					Thread th = new Thread(() -> {
 						gestionPartie(idPartie);
@@ -123,6 +144,7 @@ public class Serveur {
 			Partie p = new Partie(t);
 			p.nouvJoueur(idClient);
 			parties.add(p);
+			clients.get(idClient).setIdPartieRej(parties.indexOf(p));
 		}
 	}
 
@@ -147,7 +169,7 @@ public class Serveur {
 	public static FormalismeQuestion obtenirQuestionEtResultats() {
 		// Declaration des variables
 		String retourDeLaPage;
-		FormalismeQuestion questions = new FormalismeQuestions();
+		FormalismeQuestion questions = new FormalismeQuestion();
 
 		try {
 			retourDeLaPage = get("https://opentdb.com/api.php?amount="+NOMBRE_QUESTIONS+"&type=multiple");
@@ -178,7 +200,7 @@ public class Serveur {
 						reponsesTab[i][j] = replacement(groupeQuestionReponses.get("incorrect_answers").getAsJsonArray().get(j-1).getAsString());
 					}
 
-					questions = new FormalismeQuestions(questionsListe,bonnesReponsesListe,reponsesTab);
+					questions = new FormalismeQuestion(questionsListe,bonnesReponsesListe,reponsesTab);
 				}
 			}
 			else {
@@ -186,7 +208,6 @@ public class Serveur {
 			}
 
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return(questions);
@@ -205,15 +226,18 @@ public class Serveur {
 		int idJoueurIter;
 		int idJoueurAns;
 		//requete questions
-		FormalismeQuestions requete = obtenirQuestionEtResultats();
+		FormalismeQuestion requete = obtenirQuestionEtResultats();
 		String listeQuestions[] = requete.getListeQuestions();
 		String listeBonnesReponses[] = requete.getListeBonnesReponses();
 		String listeReponses[][] = requete.getListeReponses();
+		System.out.println(listeQuestions);
 
 		try {
+			System.out.println(parties.get(idPartie).joueurs.size());
 			for(int n=0;n<parties.get(idPartie).joueurs.size();n++) {
 				idJoueurIter=parties.get(idPartie).joueurs.get(n);
 				clients.get(idJoueurIter).getOut().writeUTF(Commandes.getReady.toString());
+				System.out.println(clients.get(idJoueurIter).getUserName()+idJoueurIter+"ok");
 			}
 			System.out.println("attente de 10s");
 			Thread.sleep(10000);
@@ -223,7 +247,7 @@ public class Serveur {
 				for(int n=0;n<parties.get(idPartie).joueurs.size();n++) {
 					idJoueurIter=parties.get(idPartie).joueurs.get(n);
 					System.out.println(clients.get(idJoueurIter).getUserName()+" question posee");
-					clients.get(idJoueurIter).getOut().writeUTF(Commandes.question.toString() + ";" + listeQuestions[i]+";"+listeReponses[i][0]+";"+listeReponses[i][1]+";"+listeReponses[i][2]+";"+listeReponses[i][3]);
+					clients.get(idJoueurIter).getOut().writeUTF(Commandes.question.toString()/* + ";" + listeQuestions[i]+";"+listeReponses[i][0]+";"+listeReponses[i][1]+";"+listeReponses[i][2]+";"+listeReponses[i][3]*/);
 				}
 				new java.util.Timer().schedule(
 						new java.util.TimerTask() {
@@ -245,7 +269,7 @@ public class Serveur {
 					synchronized (parties.get(idPartie).lock) {
 						parties.get(idPartie).lock.wait();
 						int k = 0;
-						while (k < parties.get(idPartie).joueurs.size()
+						while (k < parties.get(idPartie).joueurs.size()-1
 								&& (clients.get(parties.get(idPartie).joueurs.get(k)).getAnswer().isEmpty()
 										|| clients.get(parties.get(idPartie).joueurs.get(k)).isHasAnswered())) {
 							k++;
@@ -289,6 +313,7 @@ public class Serveur {
 				}
 				i++;
 			}
+			parties.get(idPartie).setEnCours(false);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		} catch (IOException e) {

@@ -25,13 +25,21 @@ public class Partie {
 		return enCours;
 	}
 	
+	public void setEnCours(boolean b) {
+		enCours = b;
+	}
+	
 	public void nouvJoueur(int idClient) {
 		nbJoueurs++;
 		joueurs.add(idClient);
 	}
 	
-	public void depJoueur(int idClient) {
+	public void depJoueur(int idJoueur) {
 		nbJoueurs--;
-		joueurs.remove(idClient);
+		joueurs.remove(idJoueur);
+	}
+	
+	public void modJoueur(int idJoueur) {
+		joueurs.set(idJoueur, idJoueur-1);
 	}
 }

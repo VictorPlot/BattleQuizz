@@ -59,9 +59,6 @@ public class Client extends JFrame {
 								//popup
 								System.out.println("Recherche de partie");
 								break;
-							case connect:
-								System.out.println("Connecte");
-								break;
 							case disconnect:
 								disconnect();
 								System.out.println("Deconnexion");
@@ -81,7 +78,7 @@ public class Client extends JFrame {
 					} catch(IllegalArgumentException e) {
 						e.printStackTrace();
 					}
-					this.disconnect();
+					//this.disconnect();
 				}
 				try {
 					in.close();

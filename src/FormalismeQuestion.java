@@ -26,7 +26,7 @@ public class FormalismeQuestion {
 		listeBonnesReponses = listeBR;
 	}
 
-	FormalismeQuestions(){
+	FormalismeQuestion(){
 		listeQuestions = null;
 		listeBonnesReponses = null;
 		listeReponses = null;

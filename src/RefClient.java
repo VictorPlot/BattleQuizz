@@ -15,6 +15,7 @@ public class RefClient {
 		in=inn;
 		out=outt;
 		userName=userN;
+		answer="";
 	}
 
 	public DataInputStream getIn() {
