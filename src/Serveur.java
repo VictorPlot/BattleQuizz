@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Timer;
 
 import com.google.gson.JsonArray;
@@ -70,7 +71,7 @@ public class Serveur {
 					Commandes comm = Commandes.valueOf(sComm[0]);
 					switch(comm) {
 					case joinPartie:
-						recherchePartie(idListe,Theme.valueOf(sComm[1]));
+						recherchePartie(idListe,Theme.valueOf(sComm[1]),Difficulty.valueOf(sComm[2]));
 						System.out.println("recherche de partie");
 						break;
 					case disconnect:
@@ -126,11 +127,11 @@ public class Serveur {
 		}
 	}
 	
-	private void recherchePartie(int idClient,Theme t) {
+	private void recherchePartie(int idClient,Theme t,Difficulty d) {
 		int i=0;
 		boolean partieFound=false;
 		while(i<parties.size() && !partieFound) {
-			if(!parties.get(i).isEnCours() && parties.get(i).getTheme().equals(t)) {
+			if(!parties.get(i).isEnCours() && parties.get(i).getTheme().equals(t) && parties.get(i).getDiff().equals(d)) {
 				parties.get(i).nouvJoueur(idClient);
 				clients.get(idClient).setIdPartieRej(i);
 				partieFound=true;
@@ -148,7 +149,7 @@ public class Serveur {
 			i++;
 		}
 		if(!partieFound) {
-			Partie p = new Partie(t);
+			Partie p = new Partie(t,d);
 			p.nouvJoueur(idClient);
 			System.out.println("partie cree");
 			parties.add(p);
@@ -167,7 +168,7 @@ public class Serveur {
 	}
 
 	///Récuperer la réponse d'une URl
-	public static String get(String url) throws IOException{
+	public String getURL(String url) throws IOException{
 
 		String source ="";
 		URL oracle = new URL(url);
@@ -184,13 +185,13 @@ public class Serveur {
 	}
 
 	///Reformuler la reponse JSON en une classe exploitable
-	public static FormalismeQuestion obtenirQuestionEtResultats() {
+	public FormalismeQuestion obtenirQuestionEtResultats(int idPartie) {
 		// Declaration des variables
 		String retourDeLaPage;
 		FormalismeQuestion questions = new FormalismeQuestion();
 
 		try {
-			retourDeLaPage = get("https://opentdb.com/api.php?amount="+NOMBRE_QUESTIONS+"&type=multiple");
+			retourDeLaPage = getURL("https://opentdb.com/api.php?amount="+NOMBRE_QUESTIONS+"&category="+parties.get(idPartie).getTheme().code()+"&difficulty="+parties.get(idPartie).getDiff().toString()+"&type=multiple");
 			System.out.println(retourDeLaPage);
 			System.out.println(" ");
 
@@ -245,7 +246,7 @@ public class Serveur {
 		int idJoueurAns;
 		Timer time;
 		//requete questions
-		FormalismeQuestion requete = obtenirQuestionEtResultats();
+		FormalismeQuestion requete = obtenirQuestionEtResultats(idPartie);
 		String listeQuestions[] = requete.getListeQuestions();
 		String listeBonnesReponses[] = requete.getListeBonnesReponses();
 		String listeReponses[][] = requete.getListeReponses();
@@ -334,10 +335,25 @@ public class Serveur {
 						}
 					}
 				}
-				Thread.sleep(1000);
+				Thread.sleep(3000);
 				i++;
 			}
 			parties.get(idPartie).setEnCours(false);
+			int[] scores=new int[parties.get(idPartie).joueurs.size()];
+			for (int n = 0; n < parties.get(idPartie).joueurs.size(); n++) {
+				idJoueurIter = parties.get(idPartie).joueurs.get(n);
+				scores[n]=clients.get(idJoueurIter).getScore();
+			}
+			Arrays.sort(scores);
+			for(int n = 0; n < parties.get(idPartie).joueurs.size();n++) {
+				int v=0;
+				idJoueurIter = parties.get(idPartie).joueurs.get(n);
+				clients.get(idJoueurIter).getScore();
+				while(v<scores.length && scores[v]!=clients.get(idJoueurIter).getScore()) {
+					v++;
+				}
+				clients.get(idJoueurIter).getOut().writeUTF(Commandes.disconnect.toString()+";"+v+1+";"+scores.length+";"+clients.get(idJoueurIter).getScore());
+			}
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		} catch (IOException e) {

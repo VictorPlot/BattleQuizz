@@ -1,33 +1,32 @@
+import java.awt.Dimension;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.*;
 import java.net.*;
 
 import javax.swing.JFrame;
 
-public class Client extends JFrame{
+public class Client extends JFrame {
 
 	private static final long serialVersionUID = 1L;
 	
 	private DataInputStream in;
 	private DataOutputStream out;
 	private Socket sock;
-	private Boolean connected;
+	private Boolean connected=false;
 	private final static int PORT = 10000;
 	private String server_name;
 	private String client_name;
-	private Commandes clientState;
-	private boolean newClientState = false;
-	String question;
-	String reponseHG;
-	String reponseHD;
-	String reponseBG;
-	String reponseBD;
 
 	public int port;
-	String etat="";
 
 	Gui g;
 	
 	Client() {
+		this.setSize(new Dimension(500,500));
+		this.addWindowListener(new WindowEventHandler());
+		this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+		this.setTitle("BattleQuiz Client");
 		g = new Gui(this);
 		setContentPane(g);
 		pack();
@@ -51,7 +50,6 @@ public class Client extends JFrame{
 		System.out.println("serv = " + serv);
 		System.out.println("port = " + port);
 		System.out.println("name = " + name);
-		miseEnFormeQuestion(""); //pour le debug suelement
 		try {
 			//gestion socket
 			sock = new Socket(serv,port);
@@ -65,14 +63,9 @@ public class Client extends JFrame{
 			
 			g.setIHMSelectTheme();
 			System.out.println("affichage supposé IHM");
-			//System.out.println(inf);
 			connected=true;
 			Thread th = new Thread(() -> {
-				while(connected) {
-					//System.out.println("test authentification");
-					//setClientState(Commandes.waitToJoinPartie,true);
-	
-					
+				while(connected) {					
 					String[] sComm;
 					String m;
 					try {
@@ -82,22 +75,16 @@ public class Client extends JFrame{
 						switch(comm) {
 							case connect:
 								System.out.println("Connecte");
-								setClientState(Commandes.connect, true);
 								break;
 							case disconnect:
+								g.setFinalView(Integer.parseInt(sComm[1]),Integer.parseInt(sComm[2]),Integer.parseInt(sComm[3]));
 								disconnect();
 								System.out.println("Deconnexion");
 								break;
 							case question:
 								System.out.println("Reception de la question");
-								question = sComm[1];
-								reponseBD = sComm[2];
-								reponseBG = sComm[3];
-								reponseHD = sComm[4];
-								reponseHG = sComm[5];
-								g.setIHMQuestion(question, reponseHG, reponseHD, reponseBG, reponseBD);
+								g.setIHMQuestion(sComm[1],sComm[2],sComm[3],sComm[4],sComm[5]);
 								System.out.println("affichage question");
-								setClientState(Commandes.question, false);
 								break;
 							case right:
 								g.noAnswer(sComm[1]);
@@ -119,20 +106,17 @@ public class Client extends JFrame{
 								System.out.println("démarrage question imminent");
 								g.setIHMGetReady();
 								System.out.println("affichage getReady");
-								setClientState(Commandes.getReady, false);
 								break;
 							default:
 								System.out.println("non valide");
 						}
-						//g.nouvM(innf);
 					} catch(EOFException e) {
-						//System.out.println("no m");
+						e.printStackTrace();
 					} catch (IOException e) {
 						e.printStackTrace();
 					} catch(IllegalArgumentException e) {
 						e.printStackTrace();
 					}
-					//this.disconnect();
 				}
 				try {
 					in.close();
@@ -156,15 +140,6 @@ public class Client extends JFrame{
 		}
 	}	
 	
-	private void miseEnFormeQuestion(String chaineDeCaractere) {
-		//TODO decoupage entre questions et 4 reponses possibles
-		question = "Comment écrit on Jérémy ?";
-		reponseBD = "jeremie";
-		reponseBG = "jeremye";
-		reponseHD = "jeremi";
-		reponseHG = "berthier";
-	}
-	
 	public void send(String m) {
 		try {
 			out.writeUTF(m);
@@ -186,9 +161,6 @@ public class Client extends JFrame{
 		}
 	}
 
-
-	
-
 	public void setPort(int port) {
 		this.port = port;
 	}
@@ -209,26 +181,21 @@ public class Client extends JFrame{
 		this.client_name = client_name;
 	}
 
-	public static int getPort() {
+	public int getPort() {
 		return PORT;
 	}
 	
-	public void setClientState(Commandes stateName, boolean stateBoolean) {
-		clientState = stateName;
-		newClientState = stateBoolean;
+	public boolean isConnected() {
+		return connected;
 	}
-	
-	public void setboolClientState(boolean etat) {
-		newClientState = etat;
-	}
-	
-	public boolean getboolClientState() {
-		return newClientState;
-	}
-	
-
-	public Commandes getClientState() {
-		return clientState;
-	}
-	
 }
+
+class WindowEventHandler extends WindowAdapter {
+	  public void windowClosing(WindowEvent evt) {
+	    System.out.println("fermeture fenetre");
+	    if(((Client) evt.getSource()).isConnected()) {
+	    	((Client) evt.getSource()).disconnect();
+	    }
+	  }
+}
+//icone

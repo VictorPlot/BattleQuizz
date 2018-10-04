@@ -6,9 +6,11 @@ public class Partie {
 	private boolean enCours;
 	ArrayList<Integer> joueurs;
 	public Object lock;
+	private  Difficulty diff;
 	
-	Partie(Theme t) {
+	Partie(Theme t,Difficulty d) {
 		theme = t;
+		diff = d;
 		joueurs = new ArrayList<Integer>();
 		lock = new Object();
 	}
@@ -16,7 +18,11 @@ public class Partie {
 	public Theme getTheme() {
 		return theme;
 	}
-
+	
+	public Difficulty getDiff() {
+		return diff;
+	}
+	
 	public int getNbJoueurs() {
 		return nbJoueurs;
 	}

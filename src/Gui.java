@@ -23,7 +23,6 @@ public class Gui extends JPanel implements ActionListener{
 	private JButton JBAnswerHD;
 	private JButton JBAnswerBG;
 	private JButton JBAnswerBD;
-	//private JButton JBAnswered;
 	private static JTextField jTextPseudo;
 	private JTextField jTextMDP;
 	private JTextField jTextPort;
@@ -34,8 +33,9 @@ public class Gui extends JPanel implements ActionListener{
 	private static JPanel southPanel;
 	private JTextArea jTAQuestion;
 	private JLabel jNumeroQuestion;
+	private Decompte jTextTimer;
 	private JComboBox<Difficulty> jListeDeroulanteDifficulty;
-	private JComboBox<Theme> jListeDeroulanteTheme;
+	private JComboBox<String> jListeDeroulanteTheme;
 	
 	Gui(Client client){
 		cli = client;
@@ -76,10 +76,10 @@ public class Gui extends JPanel implements ActionListener{
 			jListeDeroulanteDifficulty.addItem(dir); 
 		}
 				
-		jListeDeroulanteTheme = new JComboBox<Theme>(); 
+		jListeDeroulanteTheme = new JComboBox<String>(); 
 		jListeDeroulanteTheme.setBounds(new Rectangle(21, 92, 130, 25)); 
 		for (Theme dir : Theme.values()) {
-			jListeDeroulanteTheme.addItem(dir); 
+			jListeDeroulanteTheme.addItem(dir.aff()); 
 		}
 		
 		centerPanel.add(jTheme);
@@ -154,7 +154,7 @@ public class Gui extends JPanel implements ActionListener{
 		JLabel jTitre = new JLabel("Quizz"); 
 		northPanel.add(jTitre);
 		JLabel jTimer = new JLabel("Temps : ");
-		JLabel jTextTimer = new JLabel("-");
+		jTextTimer = new Decompte();
 		jNumeroQuestion = new JLabel("Question 0/10");
 		northPanelEast.add(jTimer);
 		northPanelEast.add(jTextTimer);
@@ -187,36 +187,43 @@ public class Gui extends JPanel implements ActionListener{
 		enableIHM();
 	}
 	
+	public void setFinalView(int position,int nbJoueurs,int score) {
+		clearIHM();
+		JLabel jText = new JLabel("Classement : "+position+" sur "+nbJoueurs+" avec un score de "+score);
+		mainPanel.add(jText);
+		enableIHM();
+	}
+	
 	public void actionPerformed(ActionEvent e){
 		if (e.getSource() == jBConnexion){
 			System.out.println("appuie sur bouton connexion");
-			
-			cli.setboolClientState(false); //assure qu'une nouvelle fenetre sera traitée ensuite
+
 			cli.getClientInformation(jTextPort.getText(), jTextServeur.getText(), jTextPseudo.getText());
 		}
 		if (e.getSource() == JBTheme){
-			System.out.println("appuie sur bouton theme choisi");
-			cli.setboolClientState(false); //assure qu'une nouvelle fenetre sera traitée ensuite
-			cli.setClientState(Commandes.question, true); //pour le débug 
-			// envoie du theme au client puis serveur
-			cli.send(Commandes.joinPartie.toString()+";"+jListeDeroulanteTheme.getSelectedItem().toString());
+			System.out.println("appui sur bouton theme choisi");
+			setIHMattendreSalle();
+			String theme="GK";
+			for(Theme t: Theme.values()) {
+				if(t.aff().equals(jListeDeroulanteTheme.getSelectedItem())) {
+					theme=t.toString();
+				}
+			}
+			cli.send(Commandes.joinPartie.toString()+";"+theme+";"+jListeDeroulanteDifficulty.getSelectedItem().toString());
 		}
 		if (e.getSource() == JBAnswerHG){
-			//JBAnswered=JBAnswerHG;
 			JBAnswerHG.setBackground(Color.ORANGE);
 			cli.send(Commandes.answer.toString()+";"+JBAnswerHG.getText());
 			disableButtons();
 			System.out.println("1");
 		}
 		if (e.getSource() == JBAnswerHD){
-			//JBAnswered=JBAnswerHD;
 			JBAnswerHD.setBackground(Color.ORANGE);
 			cli.send(Commandes.answer.toString()+";"+JBAnswerHD.getText());
 			disableButtons();
 			System.out.println("2");
 		}
 		if (e.getSource() == JBAnswerBG){
-			//JBAnswered=JBAnswerBG;
 			JBAnswerBG.setBackground(Color.ORANGE);
 			cli.send(Commandes.answer.toString()+";"+JBAnswerBG.getText());
 			disableButtons();
@@ -229,32 +236,6 @@ public class Gui extends JPanel implements ActionListener{
 			disableButtons();
 			System.out.println("4");
 		}
-		
-		/*while (!cli.getboolClientState()) { //permet d'attendre la nouvelle fenetre a afficher
-			try {
-				Thread.sleep(100);
-			} catch (InterruptedException e1) {
-				e1.printStackTrace();
-			}
-		}*/
-		
-		/*if (cli.getClientState() == Commandes.waitToJoinPartie){
-			setIHMSelectTheme();
-			System.out.println("affichage supposé IHM");
-		}*/
-		/*if (cli.getClientState() ==Commandes.connect){
-			//setIHMattendreSalle();
-			System.out.println("affichage attente salle");
-		}*/
-		/*if (cli.getClientState() == Commandes.question){
-			setIHMQuestion(cli.question, cli.reponseHG, cli.reponseHD, cli.reponseBG, cli.reponseBD);
-			System.out.println("affichage question");
-		}*/
-		/*if (cli.getClientState() == Commandes.getReady){
-			setIHMGetReady();
-			System.out.println("affichage getReady");
-		}*/
-		cli.setboolClientState(false);
 	}
 
 	public void setIHMQuestion(String question, String reponse1, String reponse2, String reponse3, String reponse4) {
@@ -275,6 +256,7 @@ public class Gui extends JPanel implements ActionListener{
 		JBAnswerBD.setText(reponse4);
 		JBAnswerBD.setEnabled(true);
 		JBAnswerBD.setBackground(Color.LIGHT_GRAY);
+		jTextTimer.startTimer();
 		//enableIHM();
 	}
 	
@@ -285,12 +267,9 @@ public class Gui extends JPanel implements ActionListener{
 		JBAnswerBD.setEnabled(false);
 	}
 	
-	/*public void goodAnswer() {
-		JBAnswered.setBackground(Color.GREEN);
-	}*/
-	
 	public void badAnswer(String good) {
 		//JBAnswered.setBackground(Color.RED);
+		disableButtons();
 		if (JBAnswerHG.getText().equals(good)){
 			JBAnswerHG.setBackground(Color.GREEN);
 		}
@@ -306,6 +285,8 @@ public class Gui extends JPanel implements ActionListener{
 	}
 	
 	public void noAnswer(String good) {
+		disableButtons();
+		jTextTimer.stopTimer();
 		if (JBAnswerHG.getText().equals(good)){
 			JBAnswerHG.setBackground(Color.GREEN);
 		}
