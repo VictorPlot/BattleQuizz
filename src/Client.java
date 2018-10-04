@@ -63,16 +63,22 @@ public class Client extends JFrame{
 			//envoi
 			out.writeUTF(name);
 			
+			g.setIHMSelectTheme();
+			System.out.println("affichage supposé IHM");
 			//System.out.println(inf);
 			connected=true;
 			Thread th = new Thread(() -> {
 				while(connected) {
-					System.out.println("test authentification");
-					setClientState(Commandes.waitToJoinPartie,true);
-					String sComm;
+					//System.out.println("test authentification");
+					//setClientState(Commandes.waitToJoinPartie,true);
+	
+					
+					String[] sComm;
+					String m;
 					try {
-						sComm = in.readUTF();
-						Commandes comm = Commandes.valueOf(sComm);
+						m = in.readUTF();
+						sComm=m.split(";");
+						Commandes comm = Commandes.valueOf(sComm[0]);
 						switch(comm) {
 							case connect:
 								System.out.println("Connecte");
@@ -84,16 +90,36 @@ public class Client extends JFrame{
 								break;
 							case question:
 								System.out.println("Reception de la question");
-								miseEnFormeQuestion("string");
-								setClientState(Commandes.question, true);
+								question = sComm[1];
+								reponseBD = sComm[2];
+								reponseBG = sComm[3];
+								reponseHD = sComm[4];
+								reponseHG = sComm[5];
+								g.setIHMQuestion(question, reponseHG, reponseHD, reponseBG, reponseBD);
+								System.out.println("affichage question");
+								setClientState(Commandes.question, false);
 								break;
-							case answer:
-								System.out.println("Quelqu un a repondu");
-								setClientState(Commandes.answer, true);
+							case right:
+								g.noAnswer(sComm[1]);
+								System.out.println("reponse juste");
+								break;
+							case allWrong:
+								g.noAnswer(sComm[1]);
+								System.out.println("fin du temps ou tout faux");
+								break;
+							case otherRight:
+								g.noAnswer(sComm[1]);
+								System.out.println("trop lent");
+								break;
+							case wrong:
+								g.badAnswer(sComm[1]);
+								System.out.println("faux bobo");
 								break;
 							case getReady:
 								System.out.println("démarrage question imminent");
-								setClientState(Commandes.getReady, true);
+								g.setIHMGetReady();
+								System.out.println("affichage getReady");
+								setClientState(Commandes.getReady, false);
 								break;
 							default:
 								System.out.println("non valide");
@@ -106,7 +132,7 @@ public class Client extends JFrame{
 					} catch(IllegalArgumentException e) {
 						e.printStackTrace();
 					}
-					this.disconnect();
+					//this.disconnect();
 				}
 				try {
 					in.close();

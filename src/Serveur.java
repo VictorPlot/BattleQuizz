@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
+import java.util.Timer;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -9,7 +10,7 @@ import com.google.gson.JsonParser;
 public class Serveur {	
 	private final static int PORT = 10000;
 	private final static int MAX_CONNECTION = 10;
-	private final static int MAX_JOUEUR = 3;
+	private final static int MAX_JOUEUR = 2;
 	private final static int NOMBRE_QUESTIONS = 10;
 	private final static int NOMBRE_REPONSES = 4;
 	private int nbConnection=0;
@@ -70,6 +71,7 @@ public class Serveur {
 					switch(comm) {
 					case joinPartie:
 						recherchePartie(idListe,Theme.valueOf(sComm[1]));
+						System.out.println("recherche de partie");
 						break;
 					case disconnect:
 						ref.setDeco(true);
@@ -77,6 +79,7 @@ public class Serveur {
 						break;
 					case answer:
 						synchronized(parties.get(clients.get(idListe).getIdPartieRej()).lock) {
+							clients.get(idListe).setAnswer(sComm[1]);
 							parties.get(clients.get(idListe).getIdPartieRej()).lock.notify();
 							System.out.println(clients.get(idListe).getUserName()+" : a repondu");
 						}
@@ -125,11 +128,15 @@ public class Serveur {
 	
 	private void recherchePartie(int idClient,Theme t) {
 		int i=0;
-		while(i<parties.size()) {
+		boolean partieFound=false;
+		while(i<parties.size() && !partieFound) {
 			if(!parties.get(i).isEnCours() && parties.get(i).getTheme().equals(t)) {
 				parties.get(i).nouvJoueur(idClient);
 				clients.get(idClient).setIdPartieRej(i);
+				partieFound=true;
+				System.out.println("partie trouvee");
 				if(parties.get(i).getNbJoueurs()==MAX_JOUEUR) {
+					System.out.println("partie lancee");
 					parties.get(i).setEnCours(true);
 					int idPartie=i;
 					Thread th = new Thread(() -> {
@@ -140,11 +147,22 @@ public class Serveur {
 			}
 			i++;
 		}
-		if(i>=parties.size()) {
+		if(!partieFound) {
 			Partie p = new Partie(t);
 			p.nouvJoueur(idClient);
+			System.out.println("partie cree");
 			parties.add(p);
 			clients.get(idClient).setIdPartieRej(parties.indexOf(p));
+			i=parties.indexOf(p);
+			if(parties.get(i).getNbJoueurs()==MAX_JOUEUR) {
+				System.out.println("partie lancee");
+				parties.get(i).setEnCours(true);
+				int idPartie=i;
+				Thread th = new Thread(() -> {
+					gestionPartie(idPartie);
+				});
+				th.start();
+			}
 		}
 	}
 
@@ -225,6 +243,7 @@ public class Serveur {
 	void gestionPartie(int idPartie) {
 		int idJoueurIter;
 		int idJoueurAns;
+		Timer time;
 		//requete questions
 		FormalismeQuestion requete = obtenirQuestionEtResultats();
 		String listeQuestions[] = requete.getListeQuestions();
@@ -240,16 +259,17 @@ public class Serveur {
 				System.out.println(clients.get(idJoueurIter).getUserName()+idJoueurIter+"ok");
 			}
 			System.out.println("attente de 10s");
-			Thread.sleep(10000);
+			Thread.sleep(2000);
 			int i=0;
 			boolean enAtt = false;
 			while(i<10) {
 				for(int n=0;n<parties.get(idPartie).joueurs.size();n++) {
 					idJoueurIter=parties.get(idPartie).joueurs.get(n);
 					System.out.println(clients.get(idJoueurIter).getUserName()+" question posee");
-					clients.get(idJoueurIter).getOut().writeUTF(Commandes.question.toString()/* + ";" + listeQuestions[i]+";"+listeReponses[i][0]+";"+listeReponses[i][1]+";"+listeReponses[i][2]+";"+listeReponses[i][3]*/);
+					clients.get(idJoueurIter).getOut().writeUTF(Commandes.question.toString() + ";" + listeQuestions[i]+";"+listeReponses[i][0]+";"+listeReponses[i][1]+";"+listeReponses[i][2]+";"+listeReponses[i][3]);
 				}
-				new java.util.Timer().schedule(
+				time=new Timer();
+				time.schedule(
 						new java.util.TimerTask() {
 							@Override
 							public void run() {
@@ -262,8 +282,9 @@ public class Serveur {
 								}
 							}
 						}, 
-						10000 
-						);
+						10000
+				);
+			
 				enAtt=true;
 				while(enAtt) {
 					synchronized (parties.get(idPartie).lock) {
@@ -277,7 +298,8 @@ public class Serveur {
 						idJoueurAns = parties.get(idPartie).joueurs.get(k);
 						if (clients.get(idJoueurAns).getAnswer().equals(listeBonnesReponses[i])) {
 							clients.get(idJoueurAns).right();
-							clients.get(idJoueurAns).getOut().writeUTF(Commandes.right.toString());
+							clients.get(idJoueurAns).getOut().writeUTF(Commandes.right.toString()+";" + listeBonnesReponses[i]);
+							time.cancel();
 							enAtt = false;
 							System.out.println(clients.get(idJoueurAns).getUserName() + " bonne reponse");
 							for (int n = 0; n < parties.get(idPartie).joueurs.size(); n++) {
@@ -302,6 +324,7 @@ public class Serveur {
 								}
 							}
 							if (!enAtt) {
+								time.cancel();
 								for (int n = 0; n < parties.get(idPartie).joueurs.size(); n++) {
 									idJoueurIter = parties.get(idPartie).joueurs.get(n);
 									clients.get(idJoueurIter).getOut().writeUTF(Commandes.allWrong.toString()+";"+listeBonnesReponses[i]);
@@ -311,6 +334,7 @@ public class Serveur {
 						}
 					}
 				}
+				Thread.sleep(1000);
 				i++;
 			}
 			parties.get(idPartie).setEnCours(false);
