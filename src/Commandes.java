@@ -1,6 +1,7 @@
 
 public enum Commandes {
 	joinPartie,
+	waitToJoinPartie,
 	getReady,
 	question,
 	answer,

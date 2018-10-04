@@ -3,35 +3,55 @@ import java.net.*;
 
 import javax.swing.JFrame;
 
-public class Client extends JFrame {
-	/**
-	 * 
-	 */
+public class Client extends JFrame{
+
 	private static final long serialVersionUID = 1L;
-	//private Gui g;
+	
 	private DataInputStream in;
 	private DataOutputStream out;
 	private Socket sock;
-	private Boolean co;
+	private Boolean connected;
 	private final static int PORT = 10000;
-	private final static String SERVER_NAME = "localhost";
+	private String server_name;
+	private String client_name;
+	private Commandes clientState;
+	private boolean newClientState = false;
+	String question;
+	String reponseHG;
+	String reponseHD;
+	String reponseBG;
+	String reponseBD;
+
+	public int port;
+	String etat="";
+
+	Gui g;
 	
 	Client() {
-		//g = new Gui(this);
-		//setContentPane(g);
-		//setSize(300,300);
-		//setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		//pack();
-		//setVisible(true);
-		this.connect(SERVER_NAME,PORT,"lol");
+		g = new Gui(this);
+		setContentPane(g);
+		pack();
+		setVisible(true);
 	}
-	
+
 	public static void main(String[] args) {
 		new Client();
 	}
 	
+	void getClientInformation(String portGUI, String serveur, String pseudo) {
+		System.out.println("appuye sur connexion");
+		setPort(Integer.parseInt(portGUI));
+		setServer_name(serveur);
+		setClient_name(pseudo);
+		connect(server_name, port, client_name);
+	}
+		
 	public void connect(String serv,int port,String name) {
 		System.out.println("Connection to server");
+		System.out.println("serv = " + serv);
+		System.out.println("port = " + port);
+		System.out.println("name = " + name);
+		miseEnFormeQuestion(""); //pour le debug suelement
 		try {
 			//gestion socket
 			sock = new Socket(serv,port);
@@ -43,21 +63,20 @@ public class Client extends JFrame {
 			//envoi
 			out.writeUTF(name);
 			
-			out.writeUTF(Commandes.joinPartie.toString()+";MUSIQUE");
 			//System.out.println(inf);
-			co=true;
-			
+			connected=true;
 			Thread th = new Thread(() -> {
-				while(co) {
+				while(connected) {
 					System.out.println("test authentification");
+					setClientState(Commandes.waitToJoinPartie,true);
 					String sComm;
 					try {
 						sComm = in.readUTF();
 						Commandes comm = Commandes.valueOf(sComm);
 						switch(comm) {
-							case joinPartie:
-								//popup
-								System.out.println("Recherche de partie");
+							case connect:
+								System.out.println("Connecte");
+								setClientState(Commandes.connect, true);
 								break;
 							case disconnect:
 								disconnect();
@@ -65,10 +84,19 @@ public class Client extends JFrame {
 								break;
 							case question:
 								System.out.println("Reception de la question");
+								miseEnFormeQuestion("string");
+								setClientState(Commandes.question, true);
 								break;
 							case answer:
 								System.out.println("Quelqu un a repondu");
+								setClientState(Commandes.answer, true);
 								break;
+							case getReady:
+								System.out.println("démarrage question imminent");
+								setClientState(Commandes.getReady, true);
+								break;
+							default:
+								System.out.println("non valide");
 						}
 						//g.nouvM(innf);
 					} catch(EOFException e) {
@@ -78,7 +106,7 @@ public class Client extends JFrame {
 					} catch(IllegalArgumentException e) {
 						e.printStackTrace();
 					}
-					//this.disconnect();
+					this.disconnect();
 				}
 				try {
 					in.close();
@@ -100,24 +128,81 @@ public class Client extends JFrame {
 		catch(IOException e) {
 			e.printStackTrace();
 		}
+	}	
+	
+	private void miseEnFormeQuestion(String chaineDeCaractere) {
+		//TODO decoupage entre questions et 4 reponses possibles
+		question = "Comment écrit on Jérémy ?";
+		reponseBD = "jeremie";
+		reponseBG = "jeremye";
+		reponseHD = "jeremi";
+		reponseHG = "berthier";
 	}
 	
 	public void send(String m) {
 		try {
 			out.writeUTF(m);
+			System.out.println("send m : " + m);
 		}
 		catch(IOException e) {
 			e.printStackTrace();
 		}
 	}
 	
+	
 	public void disconnect() {
 		try {
 			out.writeUTF(Commandes.disconnect.toString());
-			co=false;
+			connected=false;
 		}
 		catch(IOException e) {
 			e.printStackTrace();
 		}
 	}
+
+
+	
+
+	public void setPort(int port) {
+		this.port = port;
+	}
+
+	public String getServer_name() {
+		return server_name;
+	}
+
+	public void setServer_name(String server_name) {
+		this.server_name = server_name;
+	}
+
+	public String getClient_name() {
+		return client_name;
+	}
+
+	public void setClient_name(String client_name) {
+		this.client_name = client_name;
+	}
+
+	public static int getPort() {
+		return PORT;
+	}
+	
+	public void setClientState(Commandes stateName, boolean stateBoolean) {
+		clientState = stateName;
+		newClientState = stateBoolean;
+	}
+	
+	public void setboolClientState(boolean etat) {
+		newClientState = etat;
+	}
+	
+	public boolean getboolClientState() {
+		return newClientState;
+	}
+	
+
+	public Commandes getClientState() {
+		return clientState;
+	}
+	
 }
