@@ -11,10 +11,7 @@ public class RefClient {
 	private boolean hasAnswered;
 	private int score;
 
-	RefClient(DataInputStream inn,DataOutputStream outt,String userN) {
-		in=inn;
-		out=outt;
-		userName=userN;
+	RefClient() {
 		answer="";
 	}
 
@@ -28,6 +25,18 @@ public class RefClient {
 
 	public String getUserName() {
 		return userName;
+	}
+	
+	public void setIn(DataInputStream inn) {
+		in=inn;
+	}
+	
+	public void setOut(DataOutputStream outt) {
+		out=outt;
+	}
+
+	public void setUserName(String n) {
+		userName=n;
 	}
 	
 	public boolean isDeco() {

@@ -1,5 +1,7 @@
 
 public enum Commandes {
+	signin,
+	signup,
 	joinPartie,
 	waitToJoinPartie,
 	getReady,

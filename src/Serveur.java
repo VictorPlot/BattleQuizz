@@ -1,5 +1,6 @@
 import java.io.*;
 import java.net.*;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Timer;
@@ -17,8 +18,30 @@ public class Serveur {
 	private int nbConnection=0;
 	private ArrayList<RefClient> clients;
 	private ArrayList<Partie> parties;
+	
+	private final static String BDD_URL = "jdbc:mysql://localhost:3306/bdd_auth?user=java&password=password&useSSL=false&serverTimezone=Europe/Paris";
+	private final static String REQUETE_SIGNIN = "SELECT mot_de_passe FROM Compte WHERE nom= ?;";
+	private final static String REQUETE_SIGNUP = "INSERT INTO Compte (mot_de_passe, nom) VALUES (MD5(?),?)";
+	private Connection connexion;
+	private PreparedStatement preInStatement;
+	private PreparedStatement preUpStatement;
 
 	Serveur() {
+		/* Chargement du driver JDBC pour MySQL */
+		try {
+		    Class.forName( "com.mysql.cj.jdbc.Driver" );
+		} catch ( ClassNotFoundException e ) {
+		    System.out.println("pas trouve");
+		}
+		//connexion pour authentification
+		try {
+			connexion = DriverManager.getConnection(BDD_URL);
+			preInStatement = connexion.prepareStatement(REQUETE_SIGNIN);
+			preUpStatement = connexion.prepareStatement(REQUETE_SIGNUP);
+			System.out.println("connexion sql reussie");
+		} catch (SQLException e1) {
+			e1.printStackTrace();
+}
 		clients = new ArrayList<RefClient>();
 		parties = new ArrayList<Partie>();
 		System.out.println("Server launch");
@@ -54,12 +77,10 @@ public class Serveur {
 			DataOutputStream out = new DataOutputStream(sock.getOutputStream());
 
 			//reception
-			String m = in.readUTF();
-			System.out.println("New client connected : "+m);
-			RefClient ref = new RefClient(in,out,m);
+			String m;
+			RefClient ref = new RefClient();
 			clients.add(ref);
 			int idListe=clients.indexOf(ref);
-			System.out.println(idListe);
 			nbConnection++;
 
 			String[] sComm;			
@@ -70,6 +91,52 @@ public class Serveur {
 					sComm = m.split(";");
 					Commandes comm = Commandes.valueOf(sComm[0]);
 					switch(comm) {
+					case signin:
+						try {
+							preInStatement.setString(1,sComm[1]);
+							ResultSet resReq = preInStatement.executeQuery();
+							if(resReq.isBeforeFirst()) {
+								resReq.next();
+								System.out.println(sComm[2]+" "+resReq.getString("mot_de_passe"));
+								if(!sComm[2].equals(resReq.getString("mot_de_passe"))) {
+									ref.setDeco(true);
+									out.writeUTF(Commandes.disconnect.toString());
+								}
+								else {
+									System.out.println("New client connected : "+m);
+									ref.setIn(in);
+									ref.setOut(out);
+									ref.setUserName(sComm[1]);
+									out.writeUTF(Commandes.connect.toString());
+								}
+							}
+							else {
+								ref.setDeco(true);
+								out.writeUTF(Commandes.disconnect.toString());
+							}
+						} catch(SQLException e) {
+							e.printStackTrace();
+						}
+						break;
+					case signup:
+						try {
+							preUpStatement.setString(1,sComm[2]);
+							preUpStatement.setString(2,sComm[1]);
+							if(1==preUpStatement.executeUpdate()) {
+								System.out.println("New client connected : "+m);
+								ref.setIn(in);
+								ref.setOut(out);
+								ref.setUserName(sComm[1]);
+								out.writeUTF(Commandes.connect.toString());
+							}
+							else {
+								ref.setDeco(true);
+								out.writeUTF(Commandes.disconnect.toString());
+							}
+						} catch(SQLException e) {
+							e.printStackTrace();
+						}
+						break;
 					case joinPartie:
 						recherchePartie(idListe,Theme.valueOf(sComm[1]),Difficulty.valueOf(sComm[2]));
 						System.out.println("recherche de partie");
@@ -191,7 +258,10 @@ public class Serveur {
 		FormalismeQuestion questions = new FormalismeQuestion();
 
 		try {
-			retourDeLaPage = getURL("https://opentdb.com/api.php?amount="+NOMBRE_QUESTIONS+"&category="+parties.get(idPartie).getTheme().code()+"&difficulty="+parties.get(idPartie).getDiff().toString()+"&type=multiple");
+			retourDeLaPage = getURL("https://opentdb.com/api.php?amount="+NOMBRE_QUESTIONS
+					+"&category="+parties.get(idPartie).getTheme().code()
+					+"&difficulty="+parties.get(idPartie).getDiff().toString()
+					+"&type=multiple");
 			System.out.println(retourDeLaPage);
 			System.out.println(" ");
 
@@ -352,7 +422,8 @@ public class Serveur {
 				while(v<scores.length && scores[v]!=clients.get(idJoueurIter).getScore()) {
 					v++;
 				}
-				clients.get(idJoueurIter).getOut().writeUTF(Commandes.disconnect.toString()+";"+v+1+";"+scores.length+";"+clients.get(idJoueurIter).getScore());
+				v=scores.length-v;
+				clients.get(idJoueurIter).getOut().writeUTF(Commandes.disconnect.toString()+";"+v+";"+scores.length+";"+clients.get(idJoueurIter).getScore());
 			}
 		} catch (InterruptedException e) {
 			e.printStackTrace();

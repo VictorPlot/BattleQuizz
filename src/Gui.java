@@ -18,6 +18,7 @@ public class Gui extends JPanel implements ActionListener{
 	
 	private Client cli;
 	private JButton jBConnexion;
+	private JButton jBCreation;
 	private JButton JBTheme;
 	private JButton JBAnswerHG;
 	private JButton JBAnswerHD;
@@ -128,8 +129,11 @@ public class Gui extends JPanel implements ActionListener{
 		centerPanel.add(jTextPort);
 		
 		jBConnexion = new JButton("Connexion");
+		jBCreation = new JButton("Nouveau compte");
 		jBConnexion.addActionListener(this);
+		jBCreation.addActionListener(this);
 		southPanel.add(jBConnexion);
+		southPanel.add(jBCreation);
 		System.out.println("fin init GUI");
 	}
 	
@@ -198,7 +202,12 @@ public class Gui extends JPanel implements ActionListener{
 		if (e.getSource() == jBConnexion){
 			System.out.println("appuie sur bouton connexion");
 
-			cli.getClientInformation(jTextPort.getText(), jTextServeur.getText(), jTextPseudo.getText());
+			cli.getClientInformation(Commandes.signin,jTextPort.getText(), jTextServeur.getText(), jTextPseudo.getText(),jTextMDP.getText());
+		}
+		if (e.getSource() == jBCreation){
+			System.out.println("appuie sur bouton creation");
+
+			cli.getClientInformation(Commandes.signup,jTextPort.getText(), jTextServeur.getText(), jTextPseudo.getText(),jTextMDP.getText());
 		}
 		if (e.getSource() == JBTheme){
 			System.out.println("appui sur bouton theme choisi");

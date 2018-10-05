@@ -6,6 +6,10 @@ import java.net.*;
 
 import javax.swing.JFrame;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import javax.xml.bind.DatatypeConverter;
+
 public class Client extends JFrame {
 
 	private static final long serialVersionUID = 1L;
@@ -37,19 +41,30 @@ public class Client extends JFrame {
 		new Client();
 	}
 	
-	void getClientInformation(String portGUI, String serveur, String pseudo) {
+	void getClientInformation(Commandes type,String portGUI, String serveur, String pseudo,String mdp) {
 		System.out.println("appuye sur connexion");
 		setPort(Integer.parseInt(portGUI));
 		setServer_name(serveur);
 		setClient_name(pseudo);
-		connect(server_name, port, client_name);
+		connect(type,server_name, port, client_name,mdp);
 	}
 		
-	public void connect(String serv,int port,String name) {
+	public void connect(Commandes type,String serv,int port,String name,String mdp) {
 		System.out.println("Connection to server");
 		System.out.println("serv = " + serv);
 		System.out.println("port = " + port);
 		System.out.println("name = " + name);
+		MessageDigest md;
+		String myHash="";
+		try {
+			md = MessageDigest.getInstance("MD5");
+			md.update(mdp.getBytes());
+		    byte[] digest = md.digest();
+		    myHash = DatatypeConverter.printHexBinary(digest).toLowerCase();
+			//this.connect(SERVER_NAME,PORT,"/signin;user;"+myHash);
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		}
 		try {
 			//gestion socket
 			sock = new Socket(serv,port);
@@ -59,9 +74,8 @@ public class Client extends JFrame {
 			out = new DataOutputStream(sock.getOutputStream());
 			
 			//envoi
-			out.writeUTF(name);
+			out.writeUTF(type.toString()+";"+name+";"+myHash);
 			
-			g.setIHMSelectTheme();
 			System.out.println("affichage supposé IHM");
 			connected=true;
 			Thread th = new Thread(() -> {
@@ -74,6 +88,7 @@ public class Client extends JFrame {
 						Commandes comm = Commandes.valueOf(sComm[0]);
 						switch(comm) {
 							case connect:
+								g.setIHMSelectTheme();
 								System.out.println("Connecte");
 								break;
 							case disconnect:
